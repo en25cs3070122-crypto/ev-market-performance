@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Electric Vehicle Market Performance & Insights</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root{--bg:#f3f6fb;--ink:#172033;--muted:#63718a;--blue:#235ee7;--card:#fff;--line:#e6ebf3}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Inter,Segoe UI,Arial,sans-serif;color:var(--ink)}
+header{background:linear-gradient(120deg,#123a9b,#2768ed);color:white;padding:28px max(22px,calc((100vw - 1240px)/2))}
+header h1{margin:0 0 8px;font-size:clamp(24px,3vw,34px)}header p{margin:0;color:#e2eaff}
+main{max-width:1240px;margin:22px auto;padding:0 18px}.note{font-size:13px;color:var(--muted);margin:10px 0 18px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.kpi,.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 3px 12px #152a4a08}
+.kpi{padding:18px}.kpi span{display:block;color:var(--muted);font-size:13px;margin-bottom:10px}.kpi strong{font-size:27px;letter-spacing:-.6px}.kpi small{display:block;color:var(--muted);margin-top:7px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}.panel{padding:18px;min-width:0}.panel h2{font-size:17px;margin:0 0 4px}.panel p{font-size:12px;color:var(--muted);margin:0 0 14px}.chart{height:300px;position:relative}
+.tablewrap{overflow:auto}table{border-collapse:collapse;width:100%;font-size:13px}th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line);white-space:nowrap}th{color:var(--muted);font-weight:600}
+footer{max-width:1240px;margin:22px auto;padding:0 18px 30px;color:var(--muted);font-size:12px}
+@media(max-width:800px){.kpis{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}}@media(max-width:430px){.kpis{grid-template-columns:1fr 1fr}.kpi{padding:13px}.kpi strong{font-size:22px}}
+</style></head>
+<body>
+<header><h1>Electric Vehicle Market Performance & Insights</h1><p>Data analytics dashboard · Vehicle mix, range, battery technology and market signals</p></header>
+<main>
+<div class="note">Dataset preview based on the supplied training file (200,000 rows, 37 columns). Values are descriptive statistics of this dataset, not verified market-wide estimates.</div>
+<section class="kpis">
+<div class="kpi"><span>Average driving range</span><strong id="range">—</strong><small>kilometres per charge</small></div>
+<div class="kpi"><span>Average battery capacity</span><strong id="battery">—</strong><small>kWh</small></div>
+<div class="kpi"><span>Average listed price</span><strong id="price">—</strong><small>USD</small></div>
+<div class="kpi"><span>Average customer rating</span><strong id="rating">—</strong><small>out of 5</small></div>
+</section>
+<section class="grid">
+<div class="panel"><h2>Vehicle mix by category</h2><p>Count of records in each vehicle category</p><div class="chart"><canvas id="categoryChart"></canvas></div></div>
+<div class="panel"><h2>Average range by category</h2><p>Compare typical listed range across vehicle types</p><div class="chart"><canvas id="rangeChart"></canvas></div></div>
+<div class="panel"><h2>Battery technology</h2><p>Record count by battery type</p><div class="chart"><canvas id="batteryChart"></canvas></div></div>
+<div class="panel"><h2>Market region mix</h2><p>Number of vehicle records by market region</p><div class="chart"><canvas id="regionChart"></canvas></div></div>
+<div class="panel"><h2>Recommended use cases</h2><p>Most common suggested uses in the dataset</p><div class="chart"><canvas id="useChart"></canvas></div></div>
+<div class="panel"><h2>Category summary</h2><p>Average range and price, sorted by vehicle count</p><div class="tablewrap"><table><thead><tr><th>Category</th><th>Records</th><th>Avg range</th><th>Avg price</th></tr></thead><tbody id="categoryTable"></tbody></table></div></div>
+</section>
+</main><footer>Built from the supplied EV training dataset. For a formal submission, follow TABLEAU_GUIDE.md to recreate and publish the dashboard in Tableau Public.</footer>
+<script>
+fetch('dashboard_data.json').then(r=>r.json()).then(d=>{
+ const fmt=(n,digits=1)=>Number(n).toLocaleString('en-US',{maximumFractionDigits:digits,minimumFractionDigits:digits});
+ document.getElementById('range').textContent=fmt(d.avg_range)+' km';
+ document.getElementById('battery').textContent=fmt(d.avg_battery);
+ document.getElementById('price').textContent='$'+Math.round(d.avg_price).toLocaleString('en-US');
+ document.getElementById('rating').textContent=fmt(d.avg_rating,2);
+ const common={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:'#edf1f7'}}}};
+ const cats=d.category_stats;
+ new Chart(document.getElementById('categoryChart'),{type:'bar',data:{labels:cats.map(x=>x.category),datasets:[{data:cats.map(x=>x.vehicles),backgroundColor:'#3974ef',borderRadius:4}]},options:{...common,indexAxis:'y',scales:{x:{grid:{color:'#edf1f7'}},y:{grid:{display:false}}}}});
+ const topRange=[...cats].sort((a,b)=>b.avg_range-a.avg_range);
+ new Chart(document.getElementById('rangeChart'),{type:'bar',data:{labels:topRange.map(x=>x.category),datasets:[{data:topRange.map(x=>x.avg_range),backgroundColor:'#18a999',borderRadius:4}]},options:{...common,indexAxis:'y',scales:{x:{title:{display:true,text:'km'},grid:{color:'#edf1f7'}},y:{grid:{display:false}}}}});
+ new Chart(document.getElementById('batteryChart'),{type:'doughnut',data:{labels:d.battery_stats.map(x=>x.battery_type),datasets:[{data:d.battery_stats.map(x=>x.vehicles),backgroundColor:['#235ee7','#18a999','#f2a93b','#8c6ce7','#e56a8a'],borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
+ new Chart(document.getElementById('regionChart'),{type:'bar',data:{labels:d.region_stats.map(x=>x.market_region),datasets:[{data:d.region_stats.map(x=>x.vehicles),backgroundColor:'#8c6ce7',borderRadius:4}]},options:common});
+ new Chart(document.getElementById('useChart'),{type:'bar',data:{labels:d.use_stats.map(x=>x.use_case),datasets:[{data:d.use_stats.map(x=>x.vehicles),backgroundColor:'#f2a93b',borderRadius:4}]},options:{...common,indexAxis:'y',scales:{x:{grid:{color:'#edf1f7'}},y:{grid:{display:false}}}}});
+ document.getElementById('categoryTable').innerHTML=cats.map(x=>`<tr><td>${x.category}</td><td>${Number(x.vehicles).toLocaleString()}</td><td>${fmt(x.avg_range)} km</td><td>$${Math.round(x.avg_price).toLocaleString()}</td></tr>`).join('');
+}).catch(()=>{document.body.insertAdjacentHTML('beforeend','<p style="padding:20px">Could not load dashboard_data.json. Keep this HTML and JSON file in the same folder and run with a local web server.</p>')});
+</script></body></html>
